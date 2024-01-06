@@ -28,11 +28,11 @@ This game must have the following features:
   StandRight, AtkUp, AtkDown, AtkRight. You must determine which direction
   and state the player is currently in and assign the correct Animation.
 - The Player is assigned the following animations in the direction facing.
-  Please note that Left will be accomplished by mirroring Right (x scale -1)
-  StandDir  - When no input (or both opposite) is being given to the player
-  RunDir    - When move input is given to the player in a direction
-  AttackDir - When the player's sword is currently visible from an attack
-- The player moves with the following controls:
+  Please note that Left will be accomplished by mirroring Right (x scale = -1)
+  - StandDir  - When no input (or both opposite) is being given to the player
+  - RunDir    - When move input is given to the player in a direction
+  - AttackDir - When the player's sword is currently visible from an attack
+- The player moves with the following controls:<br>
   Left: A, Right: D, Up: W, Down: S, Attack: Space
 - The player can move up, left, down, right, at any time during the game.
 - The player can only move eithger horizontally or vertically at a given time
@@ -138,70 +138,70 @@ Assets File Specification
 There will be three different line types in the Assets file, each of which
 correspond to a different type of Asset. They are as follows:
 
-Texture Asset Specification:
-Texture N P
-  Texture Name     N std::string (it will have no spaces)
-  Texture FilePath P std::string (it will have no spaces)
+Texture Asset Specification:<br>
+Texture N P<br>
+  Texture Name     N std::string (it will have no spaces)<br>
+  Texture FilePath P std::string (it will have no spaces)<br>
 
-Animation Asset Specification:
-Animation N T F S
-  Animation Name  N std::string (it will have no spaces)
-  Texture Name    T std::string (refer to an existing texture)
-  Frame Count     F int (number of frames in the Animation)
-  Anim Speed      S int (number of game frames between anim frames)
+Animation Asset Specification:<br>
+Animation N T F S<br>
+  Animation Name  N std::string (it will have no spaces)<br>
+  Texture Name    T std::string (refer to an existing texture)<br>
+  Frame Count     F int (number of frames in the Animation)<br>
+  Anim Speed      S int (number of game frames between anim frames)<br>
   
-Font Asset Specification:
-Font N P
-  Font Name     N std::string (it will have no spaces)
-  Font FilePath P std::string (it will have no spaces)
+Font Asset Specification:<br>
+Font N P<br>
+  Font Name     N std::string (it will have no spaces)<br>
+  Font FilePath P std::string (it will have no spaces)<br>
 
-Sound Asset Specification:
-Sound N P
-  Sound Name     N std::string (it will have no spaces)
-  Sound FilePath P std::string (it will have no spaces)
+Sound Asset Specification:<br>
+Sound N P<br>
+  Sound Name     N std::string (it will have no spaces)<br>
+  Sound FilePath P std::string (it will have no spaces)<br>
 
 ------------------------------------------------------------------------------ 
 Level Specification File
 ------------------------------------------------------------------------------ 
-Player Specification:
-Player X Y BX BY S H
-  Spawn Position X Y int, int
-  Bounding Box Size BX BY int, int
-  Speed S float
-  Max Health H int
+Player Specification:<br>
+Player X Y BX BY S H<br>
+  Spawn Position X Y int, int<br>
+  Bounding Box Size BX BY int, int<br>
+  Speed S float<br>
+  Max Health H int<br>
 
-Tile Specification:
-Tile Name RX RY TX TY BM BV
-  Animation Name Name std::string
-  Room Coordinate RX RY int, int
-  Tile Positon TX TY int, int
-  Block Movement BM int (1 = true, 0 = false)
-  Block Vision BV int (1 = true, 0 = false)
+Tile Specification:<br>
+Tile Name RX RY TX TY BM BV<br>
+  Animation Name Name std::string<br>
+  Room Coordinate RX RY int, int<br>
+  Tile Positon TX TY int, int<br>
+  Block Movement BM int (1 = true, 0 = false)<br>
+  Block Vision BV int (1 = true, 0 = false)<br>
 
-NPC Specification:
-  NPC Name RX RY TX TY BM BV H D AI ...
-  Animation Name Name std::string
-  Room Coordinate RX RY int, int
-  Tile Positon TX TY int, int
-  Block Movement BM int (1 = true, 0 = false)
-  Block Vision BV int (1 = true, 0 = false)
-  Max Health H int int > 0
-  Damage D int > 0
-  AI Behavior Name AI std::string
-  AI Parameters ... (see below)
+NPC Specification:<br>
+  NPC Name RX RY TX TY BM BV H D AI ...<br>
+  Animation Name Name std::string<br>
+  Room Coordinate RX RY int, int<br>
+  Tile Positon TX TY int, int<br>
+  Block Movement BM int (1 = true, 0 = false)<br>
+  Block Vision BV int (1 = true, 0 = false)<br>
+  Max Health H int int > 0<br>
+  Damage D int > 0<br>
+  AI Behavior Name AI std::string<br>
+  AI Parameters ... (see below)<br>
 
-AI = Follow
-  ... = S
-  Follow Speed S float (speed to follow player)
+AI = Follow<br>
+  ... = S<br>
+  Follow Speed S float (speed to follow player)<br>
 
-AI = Patrol
-  ... = S N X1 Y1 X2 Y2 ... XN YN
-  Patrol Speed S float
-  Patrol Position N int (number of patrol positions)
-  Position 1-N Xi Yi int, int (Tile Position of Patrol Postion i)
+AI = Patrol<br>
+  ... = S N X1 Y1 X2 Y2 ... XN YN<br>
+  Patrol Speed S float<br>
+  Patrol Position N int (number of patrol positions)<br>
+  Position 1-N Xi Yi int, int (Tile Position of Patrol Postion i)<br>
 
-For Example:
-NPC Tektite 0 0 15 10 0 0 2 1 Patrol 2 4 15 10 15 7 17 7 17 10
+For Example:<br>
+NPC Tektite 0 0 15 10 0 0 2 1 Patrol 2 4 15 10 15 7 17 7 17 10<br>
   - Spawn an NPC with animation name Tektite in room (0,0) with tile pos (15,10)
   - This NPC has max health of 2 and damge of 1
   - This NPC does not block movement or vision
