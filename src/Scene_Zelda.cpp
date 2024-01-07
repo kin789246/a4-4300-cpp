@@ -200,10 +200,10 @@ void Scene_Zelda::sGUI() {
     ImGui::Begin("Scene Properties");
     if (ImGui::BeginTabBar("MyTabBar")) {
         if (ImGui::BeginTabItem("Debug")) {
-            ImGui::Checkbox("Draw Grid", &m_drawGrid);
-            ImGui::Checkbox("Draw Textures", &m_drawTextures);
-            ImGui::Checkbox("Draw Debug", &m_drawCollision);
-            ImGui::Checkbox("Follow Cam", &m_follow);
+            ImGui::Checkbox("Draw Grid (G)", &m_drawGrid);
+            ImGui::Checkbox("Draw Textures (T)", &m_drawTextures);
+            ImGui::Checkbox("Draw Debug (C)", &m_drawCollision);
+            ImGui::Checkbox("Follow Cam (Y)", &m_follow);
 
             ImGui::EndTabItem();
         }
@@ -625,10 +625,13 @@ void Scene_Zelda::sRender() {
         if (p) {
             int rx = p->get<CTransform>().pos.x / (int)width();
             int ry = p->get<CTransform>().pos.y / (int)height();
+            if (p->get<CTransform>().pos.x < 0) rx--;
+            if (p->get<CTransform>().pos.y < 0) ry--;
             m_gridText.setString(
                 "room \n" + std::to_string(rx) + " " + std::to_string(ry)
             );
-            m_gridText.setPosition(leftX + m_gridSize.x + 3,
+            m_gridText.setPosition(
+                leftX + m_gridSize.x + 3,
                 topY + m_gridSize.y / 2
             );
             m_game->window().draw(m_gridText);
