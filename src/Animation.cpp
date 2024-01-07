@@ -58,6 +58,10 @@ const std::string& Animation::getName() const {
     return m_name;
 }
 
+const sf::Sprite& Animation::getSprite() const {
+    return m_sprite;
+}
+
 sf::Sprite& Animation::getSprite() {
     return m_sprite;
 }

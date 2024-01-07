@@ -14,6 +14,7 @@ class Scene_Menu : public Scene
     std::vector<std::string> m_levelPaths;
     std::vector<sf::Text> m_menuItems;
     size_t m_selectedMenuIndex = 0;
+    sf::Sound m_titleMusic;
 
     void init();
     void update();

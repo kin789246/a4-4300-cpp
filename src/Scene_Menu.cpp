@@ -1,12 +1,23 @@
 #include "Scene_Menu.h"
 #include "Scene_Zelda.h"
+#include "SFML/Graphics/View.hpp"
 #include "SFML/Graphics/Text.hpp"
 
 void Scene_Menu::init() {
+    sf::View view = m_game->window().getView();
+    view.setCenter(
+        m_game->window().getSize().x / 2.0,
+        m_game->window().getSize().y / 2.0
+    );
+    m_game->window().setView(view);
     registerAction(sf::Keyboard::W, "UP");
     registerAction(sf::Keyboard::S, "DOWN");
     registerAction(sf::Keyboard::D, "PLAY");
+    registerAction(sf::Keyboard::M, "MUTE");
     registerAction(sf::Keyboard::Escape, "QUIT");
+
+    m_titleMusic = m_game->assets().getSound("STitleTheme");
+    // m_titleMusic.play();
 
     m_title = "Not Link";
     int titleSize = 30;
@@ -66,11 +77,20 @@ void Scene_Menu::sDoAction(const Action& action) {
                 % m_menuStrings.size();
         }
         else if (action.name() == "PLAY") {
+            m_titleMusic.stop();
             m_game->changeScene("PLAY",
                 std::make_shared<Scene_Zelda>(
                     m_game, m_levelPaths[m_selectedMenuIndex]
                 )
             );
+        }
+        else if (action.name() == "MUTE") {
+            if (m_titleMusic.getStatus() == sf::SoundSource::Playing) {
+                m_titleMusic.stop();
+            }
+            else {
+                m_titleMusic.play();
+            }
         }
         else if (action.name() == "QUIT") {
             onEnd();
@@ -107,7 +127,7 @@ void Scene_Menu::sRender() {
     }
 
     // draw help
-    sf::Text help("W:UP S:DOWN D: PLAY ESC:BACK/QUIT", 
+    sf::Text help("W:UP S:DOWN D:PLAY M:MUTE ESC:BACK/QUIT", 
         m_game->assets().getFont("Mario"),
         26
     );

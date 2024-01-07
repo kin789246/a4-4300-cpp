@@ -90,9 +90,9 @@ This game must have the following features:
 - Tiles are Entities that define the level geometry and interact with players
 - Tiles can be given any Animation that is defined in the Assets file
 - Tiles will be given a CBoundingBox equal to the size of the animation
-  tile->getComponent<CAnimation>().animation.getSize()
+  tile->get<CAnimation>().animation.getSize()
 - The current animation displayed for a tile can be retreieved with:
-  tile->getComponent<CAnimation>().animation.getName()
+  tile->get<CAnimation>().animation.getName()
 - If a tile is given the Heart animation, any NPC that collides with it
   should have its health filed to maxmium, an the tile is destroyed.
 

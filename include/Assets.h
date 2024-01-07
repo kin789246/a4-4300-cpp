@@ -12,6 +12,7 @@ class Assets
     std::map<std::string, sf::Texture> m_textures;        
     std::map<std::string, Animation> m_animations;
     std::map<std::string, sf::Font> m_fonts;
+    std::map<std::string, sf::SoundBuffer> m_soundBuffers;
     std::map<std::string, sf::Sound> m_sounds;
 
     void addTexture(const std::string& name, const std::string& path);
@@ -22,10 +23,11 @@ class Assets
     public:
 
     Assets();
+    ~Assets();
 
     const std::map<std::string, sf::Texture>& getTextures() const;
     const std::map<std::string, Animation>& getAnimations() const;
-    const std::map<std::string, sf::Sound>& getSounds() const;
+    std::map<std::string, sf::Sound>& getSounds();
 
     const sf::Texture& getTexture(const std::string& name) const;
     const Animation& getAnimation(const std::string& name) const;

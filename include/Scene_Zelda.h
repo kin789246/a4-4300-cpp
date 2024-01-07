@@ -1,5 +1,6 @@
 #include "SFML/Graphics/Text.hpp"
 #include "Scene.h"
+#include "Components.h"
 #include <memory>
 
 class Scene_Zelda : public Scene
@@ -7,7 +8,6 @@ class Scene_Zelda : public Scene
     struct PlayerConfig
     {
         float X, Y, CX, CY, SPEED, HEALTH;
-        std::string WEAPON; 
     };
 
     protected:
@@ -39,6 +39,8 @@ class Scene_Zelda : public Scene
     void sGUI();
     void sRender();
 
+    void changePlayerStateTo(PlayerState s);
+    void changePlayerStateTo(const std::string& state, const Vec2& facing); 
     public:
 
     Scene_Zelda(GameEngine*, std::string& levelPath);

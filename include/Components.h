@@ -9,12 +9,18 @@
 // checking if a flag set: return (flag & (int)PlayerState) == (int)PlayerState
 // checking multiple flags set: return (flag &(int)PlayerState) != 0
 enum struct PlayerState {
-    STAND = 1 << 0,
-    STANDSHOOT = 1 << 1,
-    AIR = 1 << 2,
-    AIRSHOOT = 1 << 3,
-    RUN = 1 << 4,
-    RUNSHOOT = 1 << 5
+    STANDDOWN = 1 << 0,
+    ATTACKDOWN = 1 << 1,
+    MOVEDOWN = 1 << 2,
+    STANDUP = 1 << 3,
+    ATTACKUP = 1 << 4,
+    MOVEUP = 1 << 5,
+    STANDLEFT = 1 << 6,
+    ATTACKLEFT = 1 << 7,
+    MOVELEFT = 1 << 8,
+    STANDRIGHT = 1 << 9,
+    ATTACKRIGHT = 1 << 10,
+    MOVERIGHT = 1 << 11,
 };
 
 class Component

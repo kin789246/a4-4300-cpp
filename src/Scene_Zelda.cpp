@@ -3,13 +3,16 @@
 #include "SFML/System/Vector2.hpp"
 #include "imgui-SFML.h"
 #include "imgui.h"
+#include "Components.h"
 #include "Scene_Menu.h"
 #include "Scene_Zelda.h"
 #include <memory>
 #include <iostream>
+#include <fstream>
+#include <string>
 
 Scene_Zelda::Scene_Zelda(GameEngine* game, std::string& levelPath)
-: Scene(game) {
+: Scene(game), m_levelPath(levelPath) {
     init(m_levelPath);
 }
 
@@ -20,11 +23,15 @@ void Scene_Zelda::init(const std::string& levelPath) {
 
     registerAction(sf::Keyboard::Escape, "QUIT");
     registerAction(sf::Keyboard::P, "PAUSE");
-    registerAction(sf::Keyboard::Y, "TOGGLE_FOLLOW"); // toggle follow camera
-    registerAction(sf::Keyboard::T, "TOGGLE_TEXTURE"); // toggle drawing (T)extures
-    registerAction(sf::Keyboard::C, "TOGGLE_COLLISION"); // toggle drawing (C)ollision Box
-    registerAction(sf::Keyboard::G, "TOGGLE_GRID"); // toggle drawing (G)rid
-                                                    //
+    // toggle follow camera
+    registerAction(sf::Keyboard::Y, "TOGGLE_FOLLOW"); 
+    // toggle drawing (T)extures
+    registerAction(sf::Keyboard::T, "TOGGLE_TEXTURE"); 
+    // toggle drawing (C)ollision Box
+    registerAction(sf::Keyboard::C, "TOGGLE_COLLISION"); 
+    // toggle drawing (G)rid
+    registerAction(sf::Keyboard::G, "TOGGLE_GRID"); 
+
     // todo: register the actions to play the game
 
     registerAction(sf::Keyboard::W, "UP");
@@ -40,8 +47,58 @@ void Scene_Zelda::loadLevel(const std::string& fileName) {
     // todo: Load the level file and put all entities in the manager
     // use the getPosition() function below to convert room-tile coords
     // to game world coords
-    
-    spawnPlayer();
+    std::ifstream file(fileName);
+    if (!file) {
+        std::cerr << "Could not load level config file!" << fileName << "\n";
+        exit(-1);
+    }
+
+    std::string head;
+    while (file >> head) {
+        if (head == "Player") {
+            file >> m_playerConfig.X >> m_playerConfig.Y
+                >> m_playerConfig.CX >> m_playerConfig.CY
+                >> m_playerConfig.SPEED
+                >> m_playerConfig.HEALTH;
+            std::cout << "Loaded Player\n";
+            spawnPlayer();
+        }
+        else if (head == "Tile") {
+            std::string name;
+            int rx, ry, tx, ty, bm, bv;
+            file >> name >> rx >> ry >> tx >> ty >> bm >> bv;
+            auto tile = m_entityManager.addEntity("tile");
+            std::cout << "Loaded Tile " << name << std::endl;
+        }
+        else if (head == "NPC") {
+            std::string name, ai;
+            int rx, ry, tx, ty, bm, bv, h, d;
+            file >> name >> rx >> ry >> tx >> ty >> bm >> bv >> h >> d >> ai;
+            auto npc = m_entityManager.addEntity("npc");
+            npc->add<CAnimation>(m_game->assets().getAnimation(name), true);
+            npc->add<CTransform>(getPosition(rx, ry, tx, ty));
+            npc->add<CBoundingBox>(Vec2(64, 64), false, false);
+            if (ai == "Follow") {
+                float s;
+                file >> s;
+            }
+            else if (ai == "Patrol") {
+                float s;
+                int n;
+                file >> s >> n;
+                for (int i=0; i<n; i++) {
+                    int xi, yi;
+                    file >> xi >> yi;
+                }
+            }
+            std::cout << "Loaded NPC " << name << " with AI " << ai << std::endl;  
+        }
+        else {
+            std::cerr << "head to " << head << "\n";
+            std::cerr << "The config file format is incorrect!\n";
+            exit(-1);
+        }
+    }
 }
 
 Vec2 Scene_Zelda::getPosition(int rx, int ry, int tx, int ty) const {
@@ -49,15 +106,23 @@ Vec2 Scene_Zelda::getPosition(int rx, int ry, int tx, int ty) const {
     // as well as the tile (tx, ty), and return the Vec2 game world
     // position of the center of the entity
 
-    return Vec2(0, 0);
+    return Vec2(
+        rx * (float)width() + tx * m_gridSize.x - m_gridSize.x / 2.0,
+        ry * (float)height() + ty * m_gridSize.y - m_gridSize.y / 2.0
+    );
 }
 
 void Scene_Zelda::spawnPlayer() {
     auto p = m_entityManager.addEntity("player");
-    p->add<CTransform>(Vec2(640, 480));
+    p->add<CTransform>(Vec2(m_playerConfig.X, m_playerConfig.Y));
     p->add<CAnimation>(m_game->assets().getAnimation("LinkStandDown"), true);
-    p->add<CBoundingBox>(Vec2(64, 64), true, false);
-    p->add<CHealth>(7, 3);
+    p->add<CBoundingBox>(
+        Vec2(m_playerConfig.CX, m_playerConfig.CY),
+        true, 
+        false
+    );
+    p->add<CHealth>(m_playerConfig.HEALTH, m_playerConfig.HEALTH / 2);
+    p->add<CState>(PlayerState::STANDDOWN);
     // todo: implement this function so that it uses the parameters input
     // from the level file
     // Those parameters should be stored in the m_playerConfig variable
@@ -91,6 +156,44 @@ void Scene_Zelda::update() {
 
 void Scene_Zelda::sMovement() {
     // todo: 
+    auto p = player();
+    if (p) {
+        p->get<CTransform>().velocity = Vec2(0, 0);
+        if (
+            p->get<CInput>().up && !p->get<CInput>().down &&
+            !p->get<CInput>().left && !p->get<CInput>().right
+            ) {
+            p->get<CTransform>().velocity.y -= m_playerConfig.SPEED;
+            p->get<CTransform>().facing.y = -1;
+        }
+        else if (
+            !p->get<CInput>().up && p->get<CInput>().down &&
+            !p->get<CInput>().left && !p->get<CInput>().right
+        ) {
+            p->get<CTransform>().velocity.y += m_playerConfig.SPEED;
+            p->get<CTransform>().facing.y = 1;
+        }
+        else if (
+            !p->get<CInput>().up && !p->get<CInput>().down &&
+            p->get<CInput>().left && !p->get<CInput>().right
+        ) {
+            p->get<CTransform>().velocity.x -= m_playerConfig.SPEED;
+            p->get<CTransform>().facing.x = -1;
+        }
+        else if (
+            !p->get<CInput>().up && !p->get<CInput>().down &&
+            !p->get<CInput>().left && p->get<CInput>().right
+        ) {
+            p->get<CTransform>().velocity.x += m_playerConfig.SPEED;
+            p->get<CTransform>().facing.x = 1;
+        }
+    }
+
+    for (auto e : m_entityManager.getEntities()) {
+        if (e->has<CTransform>()) {
+            e->get<CTransform>().pos += e->get<CTransform>().velocity;
+        }
+    }
 }
 
 void Scene_Zelda::sGUI() {
@@ -105,15 +208,78 @@ void Scene_Zelda::sGUI() {
             ImGui::EndTabItem();
         }
 
-        if (ImGui::BeginTabItem("Animations")) {
+        if (ImGui::BeginTabItem("Tiles")) {
             // todo:
-            ImGui::Text("Do this");
+            int i = 0;
+            for (const auto& [name, anim] : m_game->assets().getAnimations()) {
+                if (name.find("Tile") != std::string::npos) {
+                    if ((i++)%5 != 0) ImGui::SameLine();
+                    ImGui::ImageButton(anim.getSprite());
+                    ImGui::SetItemTooltip("%s", name.c_str());
+                }
+            }
+            ImGui::EndTabItem();
+        }
+
+        if (ImGui::BeginTabItem("Sounds")) {
+            // todo:
+            for (auto& [name, sound] : m_game->assets().getSounds()) {
+                ImGui::PushID(name.c_str());
+                if (ImGui::Button("play")) {
+                    sound.play();
+                }
+                ImGui::PopID();
+                ImGui::SameLine();
+                ImGui::PushID(name.c_str());
+                if (ImGui::Button("stop")) {
+                    sound.stop();
+                }
+                ImGui::PopID();
+                ImGui::SameLine();
+                ImGui::Text("%s", name.c_str());
+            }
             ImGui::EndTabItem();
         }
 
         if (ImGui::BeginTabItem("Entity Manager")) {
             // todo:
-            ImGui::Text("Do this");
+            static ImGuiTreeNodeFlags tflags = ImGuiTreeNodeFlags_Framed;
+            if (ImGui::TreeNodeEx("Entities by Tag", tflags))
+            {
+                for (auto& [tag, entityVec] : m_entityManager.getEntityMap()) {
+                    if (ImGui::TreeNodeEx(tag.c_str(), tflags)) {
+                        for (auto e: entityVec) {
+                            ImGui::Text("%s", std::to_string(e->id()).c_str());
+                            ImGui::SameLine();
+                            ImGui::Text("%s", e->tag().c_str());
+                            ImGui::SameLine();
+                            ImGui::Text("(%.f, %.f)", 
+                                e->get<CTransform>().pos.x,
+                                e->get<CTransform>().pos.y
+                            );
+                        }
+
+                        ImGui::TreePop();
+                    }
+                }
+
+                ImGui::TreePop();
+            }
+
+            if (ImGui::TreeNodeEx("All Entities", tflags)) {
+                for (auto e : m_entityManager.getEntities()) {
+                    ImGui::Text("%s", std::to_string(e->id()).c_str());
+                    ImGui::SameLine();
+                    ImGui::Text("%s", e->tag().c_str());
+                    ImGui::SameLine();
+                    ImGui::Text("(%.f, %.f)", 
+                        e->get<CTransform>().pos.x,
+                        e->get<CTransform>().pos.y
+                    );
+                }
+
+                ImGui::TreePop();
+            }
             ImGui::EndTabItem();
         }
 
@@ -140,11 +306,51 @@ void Scene_Zelda::sDoAction(const Action& action) {
         else if (action.name() == "PAUSE") { 
             setPaused(!m_pause);
         }
+        else if (action.name() == "UP") {
+            if (!player()) return;
+            player()->get<CInput>().up = true;
+        }
+        else if (action.name() == "DOWN") {
+            if (!player()) return;
+            player()->get<CInput>().down = true;
+        }
+        else if (action.name() == "LEFT") {
+            if (!player()) return;
+            player()->get<CInput>().left = true;
+        }
+        else if (action.name() == "RIGHT") {
+            if (!player()) return;
+            player()->get<CInput>().right = true;
+        }
+        else if (action.name() == "ATTACK") {
+            if (!player()) return;
+            player()->get<CInput>().attack = true;
+        }
         else if (action.name() == "QUIT") { 
             onEnd();
         }
     }
     else if (action.type() == "END") {
+        if (action.name() == "UP") {
+            if (!player()) return;
+            player()->get<CInput>().up = false;
+        }
+        else if (action.name() == "DOWN") {
+            if (!player()) return;
+            player()->get<CInput>().down = false;
+        }
+        else if (action.name() == "LEFT") {
+            if (!player()) return;
+            player()->get<CInput>().left = false;
+        }
+        else if (action.name() == "RIGHT") {
+            if (!player()) return;
+            player()->get<CInput>().right = false;
+        }
+        else if (action.name() == "ATTACK") {
+            if (!player()) return;
+            player()->get<CInput>().attack = false;
+        }
     }
 }
 
@@ -170,9 +376,109 @@ void Scene_Zelda::sCollision() {
 void Scene_Zelda::sAnimation() {
     // todo:
     // player facing direction
+    auto p = player();
+    if (p) {
+        if (p->get<CInput>().attack) {
+            changePlayerStateTo("attack", p->get<CTransform>().facing);
+        }
+        // face right
+        else if (p->get<CTransform>().velocity.x > 0) {
+            p->get<CTransform>().facing = Vec2(1, 0);
+            changePlayerStateTo("move", p->get<CTransform>().facing);
+            p->get<CTransform>().scale.x = 1;
+        }
+        // face left
+        else if (p->get<CTransform>().velocity.x < 0) {
+            p->get<CTransform>().facing = Vec2(-1, 0);
+            changePlayerStateTo("move", p->get<CTransform>().facing);
+            p->get<CTransform>().scale.x = -1;
+        }
+        // face up
+        else if (p->get<CTransform>().velocity.y < 0) {
+            p->get<CTransform>().facing = Vec2(0, -1);
+            changePlayerStateTo("move", p->get<CTransform>().facing);
+        }
+        // face down
+        else if (p->get<CTransform>().velocity.y > 0) {
+            p->get<CTransform>().facing = Vec2(0, 1);
+            changePlayerStateTo("move", p->get<CTransform>().facing);
+        } 
+        // stand
+        else if (p->get<CTransform>().velocity.x == 0 &&
+            p->get<CTransform>().velocity.y == 0) {
+            changePlayerStateTo("stand", p->get<CTransform>().facing);
+        }
+
+        if (p->get<CState>().changeAnimate) {
+            switch (p->get<CState>().state) {
+                case PlayerState::STANDDOWN:
+                    p->add<CAnimation>(
+                        m_game->assets().getAnimation("LinkStandDown"),
+                        true
+                    );
+                    break;
+                case PlayerState::STANDUP:
+                    p->add<CAnimation>(
+                        m_game->assets().getAnimation("LinkStandUp"),
+                        true
+                    );
+                    break;
+                case PlayerState::STANDRIGHT:
+                case PlayerState::STANDLEFT:
+                    p->add<CAnimation>(
+                        m_game->assets().getAnimation("LinkStandRight"),
+                        true
+                    );
+                    break;
+                case PlayerState::MOVEDOWN:
+                    p->add<CAnimation>(
+                        m_game->assets().getAnimation("LinkMoveDown"),
+                        true
+                    );
+                    break;
+                case PlayerState::MOVEUP:
+                    p->add<CAnimation>(
+                        m_game->assets().getAnimation("LinkMoveUp"),
+                        true
+                    );
+                    break;
+                case PlayerState::MOVERIGHT:
+                case PlayerState::MOVELEFT:
+                    p->add<CAnimation>(
+                        m_game->assets().getAnimation("LinkMoveRight"),
+                        true
+                    );
+                    break;
+                case PlayerState::ATTACKDOWN:
+                    p->add<CAnimation>(
+                        m_game->assets().getAnimation("LinkAtkDown"),
+                        true
+                    );
+                    break;
+                case PlayerState::ATTACKUP:
+                    p->add<CAnimation>(
+                        m_game->assets().getAnimation("LinkAtkUp"),
+                        true
+                    );
+                    break;
+                case PlayerState::ATTACKRIGHT:
+                case PlayerState::ATTACKLEFT:
+                    p->add<CAnimation>(
+                        m_game->assets().getAnimation("LinkAtkRight"),
+                        true
+                    );
+                    break;
+            }
+        }
+    }
     // sword animation based on player facing
     // the sword should move if the player changes direction mid swing
     // destruction of entities with non-repeating finished animations
+    for (auto e : m_entityManager.getEntities()) {
+        if (e->has<CAnimation>()) {
+            e->get<CAnimation>().animation.update();
+        }
+    }
 }
 
 void Scene_Zelda::sCamera() {
@@ -180,11 +486,24 @@ void Scene_Zelda::sCamera() {
     // get the current view, which we will modify in the if-statement below
     sf::View view = m_game->window().getView();
 
+    auto p = player();
+    if (!p) return;
+    auto& pPos = p->get<CTransform>().pos;
     if (m_follow) {
         // player follow camera
+        view.setCenter(pPos.x, pPos.y);
     }
     else {
         // room-based camera
+        auto winSize = m_game->window().getSize();
+        int roomX = pPos.x / winSize.x; 
+        int roomY = pPos.y / winSize.y;
+        if (pPos.x < 0) roomX--;
+        if (pPos.y < 0) roomY--;
+        view.setCenter(
+            roomX * (float)width() + width() / 2.0, 
+            roomY * (float)height() + height() / 2.0
+        );
     }
 
     // then set the window view
@@ -297,21 +616,112 @@ void Scene_Zelda::sRender() {
         float leftX = m_game->window().getView().getCenter().x - width() / 2.0;
         float rightX = leftX + width() + m_gridSize.x;
         float nextGridX = leftX - ((int)leftX % (int)m_gridSize.x);
+        float topY = m_game->window().getView().getCenter().y - height() / 2.0;
+        float bottomY = topY + height() + m_gridSize.y;
+        float nextGridY = topY - ((int)topY % (int)m_gridSize.x);
 
-        for (float x = nextGridX; x < rightX; x += m_gridSize.x) {
-            drawLine(Vec2(x, 0), Vec2(x, height()));
+        // draw room coordinate
+        auto p = player();
+        if (p) {
+            int rx = p->get<CTransform>().pos.x / (int)width();
+            int ry = p->get<CTransform>().pos.y / (int)height();
+            m_gridText.setString(
+                "room \n" + std::to_string(rx) + " " + std::to_string(ry)
+            );
+            m_gridText.setPosition(leftX + m_gridSize.x + 3,
+                topY + m_gridSize.y / 2
+            );
+            m_game->window().draw(m_gridText);
         }
 
-        for (float y=0; y < height(); y += m_gridSize.y) {
+        for (float x = nextGridX; x < rightX; x += m_gridSize.x) {
+            drawLine(Vec2(x, topY), Vec2(x, bottomY));
+        }
+
+        for (float y=nextGridY; y < bottomY; y += m_gridSize.y) {
             drawLine(Vec2(leftX, y), Vec2(rightX, y));
 
             for (float x = nextGridX; x < rightX; x += m_gridSize.x) {
-                std::string xCell = std::to_string((int)x / (int)m_gridSize.x);
-                std::string yCell = std::to_string((int)y / (int)m_gridSize.y);
+                int w = width();
+                int h = height();
+                std::string xCell = std::to_string(
+                    ((((int)x % w) + w) % w) / (int)m_gridSize.x
+                );
+                std::string yCell = std::to_string(
+                    ((((int)y % h) + h) % h) / (int)m_gridSize.y
+                );
                 m_gridText.setString("(" + xCell + "," + yCell + ")");
                 m_gridText.setPosition(x+3, y+2);
                 m_game->window().draw(m_gridText);
             }
         }
+    }
+}
+
+
+std::shared_ptr<Entity> Scene_Zelda::player() {
+    for (auto e : m_entityManager.getEntities("player")) {
+        return e;
+    }
+    return nullptr;
+}
+
+void Scene_Zelda::changePlayerStateTo(
+    const std::string& state, 
+    const Vec2& facing
+) {
+    auto p = player();
+    if (!p) return;
+    auto& prev = p->get<CState>().preState; 
+    PlayerState s;
+    if (state == "stand") {
+        if (facing == Vec2(1, 0)) {
+            s = PlayerState::STANDRIGHT;
+        }
+        else if (facing == Vec2(-1, 0)) {
+            s = PlayerState::STANDLEFT;
+        }
+        else if (facing == Vec2(0, -1)) {
+            s = PlayerState::STANDUP;
+        }
+        else if (facing == Vec2(0, 1)) {
+            s = PlayerState::STANDDOWN;
+        }
+    }
+    if (state == "move") {
+        if (facing == Vec2(1, 0)) {
+            s = PlayerState::MOVERIGHT;
+        }
+        else if (facing == Vec2(-1, 0)) {
+            s = PlayerState::MOVELEFT;
+        }
+        else if (facing == Vec2(0, -1)) {
+            s = PlayerState::MOVEUP;
+        }
+        else if (facing == Vec2(0, 1)) {
+            s = PlayerState::MOVEDOWN;
+        }
+    }
+    if (state == "attack") {
+        if (facing == Vec2(1, 0)) {
+            s = PlayerState::ATTACKRIGHT;
+        }
+        else if (facing == Vec2(-1, 0)) {
+            s = PlayerState::ATTACKLEFT;
+        }
+        else if (facing == Vec2(0, -1)) {
+            s = PlayerState::ATTACKUP;
+        }
+        else if (facing == Vec2(0, 1)) {
+            s = PlayerState::ATTACKDOWN;
+        }
+    }
+    if (prev != s) {
+        prev = p->get<CState>().state;
+        p->get<CState>().state = s; 
+        p->get<CState>().changeAnimate = true;
+    }
+    else { 
+        p->get<CState>().changeAnimate = false;
     }
 }

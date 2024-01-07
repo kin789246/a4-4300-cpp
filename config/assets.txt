@@ -34,42 +34,42 @@ Texture TexTreeMonster3 assets/images/zelda_treemonster3.png
 Texture TexTreeMonster4 assets/images/zelda_treemonster4.png
 Texture TexTreeMonster5 assets/images/zelda_treemonster5.png
 Texture TexTreeMonster6 assets/images/zelda_treemonster6.png
-Animation ArmosStandBack TexArmosStandBack 2 4
-Animation ArmosStandFront TexArmosStandFront 2 4
-Animation Black TexBlack 1 0
-Animation Bush TexBush 1 0
-Animation Lake1 TexLake1 1 0
-Animation Lake2 TexLake2 1 0
-Animation Lake3 TexLake3 1 0
-Animation Lake4 TexLake4 1 0
-Animation Lake5 TexLake5 1 0
-Animation Lake6 TexLake6 1 0
-Animation Lake7 TexLake7 1 0
-Animation Lake8 TexLake8 1 0
-Animation Lake9 TexLake9 1 0
-Animation LinkAtkDown TexAtkDown 4 8
-Animation LinkAtkRight TexAtkRight 4 8
-Animation LinkAtkUp TexAtkUp 4 8
-Animation LinkMoveDown TexMoveDown 2 4
-Animation LinkMoveRight TexMoveRight 2 4
-Animation LinkMoveUp TexMoveUp 2 4
+Animation ArmosStandBack TexArmosStandBack 2 12
+Animation ArmosStandFront TexArmosStandFront 2 12
+Animation TileBlack TexBlack 1 0
+Animation TileBush TexBush 1 0
+Animation TileLake1 TexLake1 1 0
+Animation TileLake2 TexLake2 1 0
+Animation TileLake3 TexLake3 1 0
+Animation TileLake4 TexLake4 1 0
+Animation TileLake5 TexLake5 1 0
+Animation TileLake6 TexLake6 1 0
+Animation TileLake7 TexLake7 1 0
+Animation TileLake8 TexLake8 1 0
+Animation TileLake9 TexLake9 1 0
+Animation LinkAtkDown TexAtkDown 4 4
+Animation LinkAtkRight TexAtkRight 4 4
+Animation LinkAtkUp TexAtkUp 4 4
+Animation LinkMoveDown TexMoveDown 2 8
+Animation LinkMoveRight TexMoveRight 2 8
+Animation LinkMoveUp TexMoveUp 2 8
 Animation LinkStandDown TexStandDown 1 0
 Animation LinkStandRight TexStandRight 1 0
 Animation LinkStandUp TexStandUp 1 0
-Animation Rock1 TexRock1 1 0
-Animation Rock2 TexRock2 1 0
-Animation Rock3 TexRock3 1 0
-Animation Rock4 TexRock4 1 0
-Animation Rock5 TexRock5 1 0
-Animation Rock6 TexRock6 1 0
-Animation Stair TexStair 1 0
-Animation TektiteStandFront TexTektiteStandFront 2 4
-Animation TreeMonster1 TexTreeMonster1 1 0
-Animation TreeMonster2 TexTreeMonster2 1 0
-Animation TreeMonster3 TexTreeMonster3 1 0
-Animation TreeMonster4 TexTreeMonster4 1 0
-Animation TreeMonster5 TexTreeMonster5 1 0
-Animation TreeMonster6 TexTreeMonster6 1 0
+Animation TileRock1 TexRock1 1 0
+Animation TileRock2 TexRock2 1 0
+Animation TileRock3 TexRock3 1 0
+Animation TileRock4 TexRock4 1 0
+Animation TileRock5 TexRock5 1 0
+Animation TileRock6 TexRock6 1 0
+Animation TileStair TexStair 1 0
+Animation TektiteStandFront TexTektiteStandFront 2 12
+Animation TileTreeMonster1 TexTreeMonster1 1 0
+Animation TileTreeMonster2 TexTreeMonster2 1 0
+Animation TileTreeMonster3 TexTreeMonster3 1 0
+Animation TileTreeMonster4 TexTreeMonster4 1 0
+Animation TileTreeMonster5 TexTreeMonster5 1 0
+Animation TileTreeMonster6 TexTreeMonster6 1 0
 Sound SEnemyDamaged assets/sounds/zelda_EnemyDamaged.wav
 Sound SEnemyDied assets/sounds/zelda_EnemyDied.wav
 Sound SLinkDamaged assets/sounds/zelda_LinkDamaged.wav

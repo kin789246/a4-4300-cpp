@@ -29,5 +29,6 @@ class Animation
     bool hasEnded() const;
     const std::string& getName() const;
     const Vec2& getSize() const;
+    const sf::Sprite& getSprite() const;
     sf::Sprite& getSprite();
 };

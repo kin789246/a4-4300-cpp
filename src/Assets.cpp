@@ -4,6 +4,7 @@
 #include <iostream>
 
 Assets::Assets() {}
+Assets::~Assets() {}
 
 void Assets::addTexture(const std::string& name, const std::string& path) {
     sf::Texture texture;
@@ -30,13 +31,14 @@ void Assets::addFont(const std::string& name, const std::string& path) {
 }
 
 void Assets::addSound(const std::string& name, const std::string& path) {
-    sf::SoundBuffer sbuf;
-    if (!sbuf.loadFromFile(path)) {
+    sf::SoundBuffer sb;
+    if (!sb.loadFromFile(path)) {
         std::cerr << "Could not load sound!\n";
         exit(-1);
     }
     std::cout << "Loaded Sound: " << name << " from " << path << std::endl;
-    m_sounds[name] = sf::Sound(sbuf);
+    m_soundBuffers[name] = sb;
+    m_sounds[name] = sf::Sound(m_soundBuffers.at(name));
 }
 
 const sf::Texture& Assets::getTexture(const std::string& name) const {
@@ -49,6 +51,10 @@ const Animation& Assets::getAnimation(const std::string& name) const {
 
 const sf::Font& Assets::getFont(const std::string& name) const {
     return m_fonts.at(name);
+}
+
+sf::Sound& Assets::getSound(const std::string& soundName) {
+    return m_sounds[soundName];
 }
 
 void Assets::loadFromFile(const std::string& path) {
@@ -104,6 +110,6 @@ const std::map<std::string, Animation>& Assets::getAnimations() const {
     return m_animations;
 }
 
-const std::map<std::string, sf::Sound>& Assets::getSounds() const {
+std::map<std::string, sf::Sound>& Assets::getSounds() {
     return m_sounds;
 }
