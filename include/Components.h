@@ -102,12 +102,16 @@ class CBoundingBox : public Component
     public:
         Vec2 size;
         Vec2 halfSize;
+        Vec2 center;
+        Vec2 prevCenter;
         bool blockMove = false;
         bool blockVision = false;
         CBoundingBox() {}
-        CBoundingBox(const Vec2& s, bool m, bool v) 
+        CBoundingBox(const Vec2& c, const Vec2& s, bool m, bool v) 
         : size(s)
           , halfSize(s.x / 2.0, s.y / 2.0)
+          , center(c)
+          , prevCenter(c)
           , blockMove(m)
           , blockVision(v)
     {}

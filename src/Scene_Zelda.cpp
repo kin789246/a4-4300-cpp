@@ -70,7 +70,12 @@ void Scene_Zelda::loadLevel(const std::string& fileName) {
             auto tile = m_entityManager.addEntity("tile");
             tile->add<CAnimation>(m_game->assets().getAnimation(name), true);
             tile->add<CTransform>(getPosition(rx, ry, tx, ty));
-            tile->add<CBoundingBox>(Vec2(64, 64), bm, bv);
+            tile->add<CBoundingBox>(
+                tile->get<CTransform>().pos,
+                Vec2(64, 64),
+                bm,
+                bv
+            );
             tile->add<CDraggable>();
             std::cout << "Loaded Tile " << name << std::endl;
         }
@@ -81,7 +86,12 @@ void Scene_Zelda::loadLevel(const std::string& fileName) {
             auto npc = m_entityManager.addEntity("npc");
             npc->add<CAnimation>(m_game->assets().getAnimation(name), true);
             npc->add<CTransform>(getPosition(rx, ry, tx, ty));
-            npc->add<CBoundingBox>(Vec2(64, 64), false, false);
+            npc->add<CBoundingBox>(
+                npc->get<CTransform>().pos,
+                Vec2(64, 64),
+                false,
+                false
+            );
             if (ai == "Follow") {
                 float s;
                 file >> s;
@@ -125,6 +135,7 @@ void Scene_Zelda::spawnPlayer() {
     p->add<CTransform>(Vec2(m_playerConfig.X, m_playerConfig.Y));
     p->add<CAnimation>(m_game->assets().getAnimation("LinkStandDown"), true);
     p->add<CBoundingBox>(
+        Vec2(m_playerConfig.X, m_playerConfig.Y), 
         Vec2(m_playerConfig.CX, m_playerConfig.CY),
         true, 
         false
@@ -141,12 +152,19 @@ void Scene_Zelda::spawnSword(std::shared_ptr<Entity> entity) {
     // - should spawn at the appropriate location based on player's facing direction
     auto sword = m_entityManager.addEntity("sword");
     Vec2 facing = entity->get<CTransform>().facing;
-    Vec2 ePos = entity->get<CTransform>().pos;
-    sword->add<CTransform>(Vec2(
-       ePos.x + facing.x * m_gridSize.x, 
-       ePos.y + facing.y * m_gridSize.y 
-    ));
-    sword->add<CBoundingBox>(m_gridSize, false, false);
+    Vec2 boxC = entity->get<CBoundingBox>().center;
+    int swordL = 45, swordW = 15;
+    Vec2 swordC = Vec2(
+       boxC.x + facing.x * (swordL + 10), 
+       boxC.y + facing.y * (swordL + 10) 
+    );
+    sword->add<CTransform>(swordC);
+    if (facing.x != 0) {
+        sword->add<CBoundingBox>(swordC, Vec2(swordL, swordW), false, false);
+    }
+    else if (facing.y != 0) {
+        sword->add<CBoundingBox>(swordC, Vec2(swordW, swordL), false, false);
+    }
     
     // - should be given the appropriate lifespan
     sword->add<CLifespan>(4, m_currentFrame);
@@ -216,6 +234,9 @@ void Scene_Zelda::sMovement() {
 
     for (auto e : m_entityManager.getEntities()) {
         if (e->has<CTransform>()) {
+            e->get<CTransform>().prevPos = e->get<CTransform>().pos;
+            e->get<CBoundingBox>().prevCenter = e->get<CBoundingBox>().center;
+            e->get<CBoundingBox>().center += e->get<CTransform>().velocity;
             e->get<CTransform>().pos += e->get<CTransform>().velocity;
         }
     }
@@ -249,11 +270,15 @@ void Scene_Zelda::sGUI() {
                         tile->add<CAnimation>(
                             m_game->assets().getAnimation(name), true
                         );
-                        // todo: check if needs blockVision
-                        tile->add<CBoundingBox>(Vec2(64, 64), bm, bv);
-                        tile->add<CDraggable>();
                         auto view = m_game->window().getView().getCenter();
                         tile->add<CTransform>(Vec2(view.x, view.y));
+                        tile->add<CBoundingBox>(
+                            Vec2(view.x, view.y),
+                            Vec2(64, 64), 
+                            bm, 
+                            bv
+                        );
+                        tile->add<CDraggable>();
                         std::cout << "create " << name
                             << " with block movement=" << bm
                             << " and block vision=" << bv << std::endl;
@@ -385,7 +410,7 @@ void Scene_Zelda::sDoAction(const Action& action) {
                 return;
             }
             for (auto e : m_entityManager.getEntities()) {
-                if (isInside(pos, e)) {
+                if (m_physics.IsInside(pos, e)) {
                     if (e->has<CDraggable>()) {
                         if (!m_eOnDragging) {
                             e->get<CDraggable>().dragging = true;
@@ -657,15 +682,15 @@ void Scene_Zelda::sRender() {
 
     // draw all Entity collision bounding boxes with a rectangle shape
     if (m_drawCollision) {
+        // draw bounding box
         sf::CircleShape dot(4);
         for (auto e : m_entityManager.getEntities()) {
             if (e->has<CBoundingBox>()) {
                 auto& box = e->get<CBoundingBox>();
-                auto& transform = e->get<CTransform>();
                 sf::RectangleShape rect;
                 rect.setSize(sf::Vector2f(box.size.x-1, box.size.y-1));
                 rect.setOrigin(sf::Vector2f(box.halfSize.x, box.halfSize.y));
-                rect.setPosition(transform.pos.x, transform.pos.y);
+                rect.setPosition(box.center.x, box.center.y);
                 rect.setFillColor(sf::Color(0, 0, 0, 0));
                 if (box.blockMove && box.blockVision) {
                     rect.setOutlineColor(sf::Color::Black);
@@ -681,6 +706,23 @@ void Scene_Zelda::sRender() {
                 }
                 rect.setOutlineThickness(1);
                 m_game->window().draw(rect);
+                
+                // draw line between player and npc
+                if (!player()) continue;
+                if (e->tag() == "npc") {
+                    auto& ePos = e->get<CTransform>().pos;
+                    auto view = m_game->window().getView().getCenter();
+                    if (ePos.x >= view.x - (float)width()/2.0&&
+                        ePos.x <= view.x + (float)width()/2.0 &&
+                        ePos.y >= view.y - (float)height()/2.0 &&
+                        ePos.y <= view.y + (float)height()/2.0 
+                    ) {
+                        drawLine(
+                            player()->get<CTransform>().pos,
+                            e->get<CTransform>().pos
+                        );
+                    }
+                }
             }
         }
     }
@@ -779,23 +821,35 @@ void Scene_Zelda::changePlayerStateTo(
             s = PlayerState::MOVEDOWN;
         }
     }
+    Vec2 offset = p->get<CBoundingBox>().center;
     if (state == "attack") {
         if (facing == Vec2(1, 0)) {
             s = PlayerState::ATTACKRIGHT;
+            offset.x -= 10;
         }
         else if (facing == Vec2(-1, 0)) {
             s = PlayerState::ATTACKLEFT;
+            offset.x += 10;
         }
         else if (facing == Vec2(0, -1)) {
             s = PlayerState::ATTACKUP;
+            offset.y += 10;
         }
         else if (facing == Vec2(0, 1)) {
             s = PlayerState::ATTACKDOWN;
+            offset.y -= 10;
         }
     }
     if (prev != s) {
         prev = p->get<CState>().state;
         p->get<CState>().state = s; 
+        // change player bounding box for attack animation
+        if (state == "attack") {
+            p->get<CBoundingBox>().center = offset;
+        }
+        else {
+            p->get<CBoundingBox>().center = p->get<CTransform>().pos;
+        }
         p->get<CState>().changeAnimate = true;
     }
     else { 
@@ -808,20 +862,6 @@ Vec2 Scene_Zelda::posWinToWorld(const Vec2& pos) {
     float wx = view.getCenter().x - width() / 2.0;
     float wy = view.getCenter().y - height() / 2.0;
     return Vec2(pos.x + wx, pos.y + wy);
-}
-
-bool Scene_Zelda::isInside(Vec2 pos, std::shared_ptr<Entity> e) {
-    Vec2 s = e->get<CAnimation>().animation.getSize();
-    Vec2 ePos = e->get<CTransform>().pos;
-    if (pos.x > ePos.x - s.x / 2 &&
-        pos.x < ePos.x + s.x / 2 &&
-        pos.y > ePos.y - s.y / 2 &&
-        pos.y < ePos.y + s.y / 2
-    ) {
-        std::cout << e->get<CAnimation>().animation.getName() << std::endl;
-        return true;
-    }
-    return false;
 }
 
 void Scene_Zelda::sDrag() {

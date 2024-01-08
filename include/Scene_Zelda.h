@@ -1,6 +1,7 @@
 #include "SFML/Graphics/Text.hpp"
 #include "Scene.h"
 #include "Components.h"
+#include "Physics.h"
 #include <memory>
 
 class Scene_Zelda : public Scene
@@ -22,6 +23,7 @@ class Scene_Zelda : public Scene
     sf::Text m_gridText;
     Vec2 m_mousePos;
     std::shared_ptr<Entity> m_eOnDragging;
+    Physics m_physics;
 
     void init(const std::string& levelPath);
     void loadLevel(const std::string& levelPath);
@@ -46,7 +48,6 @@ class Scene_Zelda : public Scene
     void changePlayerStateTo(const std::string& state, const Vec2& facing); 
 
     Vec2 posWinToWorld(const Vec2& pos);
-    bool isInside(Vec2 pos, std::shared_ptr<Entity> e);
 
     public:
 
