@@ -48,7 +48,7 @@ class Scene_Zelda : public Scene
     void changePlayerStateTo(const std::string& state, const Vec2& facing); 
 
     Vec2 posWinToWorld(const Vec2& pos);
-
+    Vec2 getRoomXY(const Vec2& pos);
     public:
 
     Scene_Zelda(GameEngine*, std::string& levelPath);

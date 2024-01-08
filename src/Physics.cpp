@@ -90,3 +90,41 @@ bool Physics::EntityIntersect(
     }
     return false;
 }
+
+RectOverlap Physics::AisNearB(
+            std::shared_ptr<Entity> a,
+            std::shared_ptr<Entity> b,
+            const Vec2& maxDist
+) {
+    ODirection dir = ODirection::NONE;
+    Vec2 overlap = GetOverlap(a, b);
+    Vec2 pOverlap = GetPreviousOverlap(a, b);
+    float dy = b->get<CTransform>().pos.y - a->get<CTransform>().pos.y;
+    if (0 < overlap.x && 
+        -maxDist.y < overlap.y &&
+        0 <= overlap.y &&
+        pOverlap.y <= 0
+    ) {
+        if (dy > 0) {
+            dir = ODirection::UP;
+        }
+        else if (dy < 0){
+            dir = ODirection::Down;
+        }
+    }
+
+    float dx = b->get<CTransform>().pos.x - a->get<CTransform>().pos.x;
+    if (0 < overlap.y &&
+            -maxDist.x < overlap.x &&
+            0 <= overlap.x &&
+            pOverlap.x <= 0
+       ) {
+        if (dx > 0) {
+            dir = ODirection::LEFT;
+        }
+        else if (dx < 0) {
+            dir = ODirection::RIGHT;
+        }
+    }
+    return { dir, overlap };
+}

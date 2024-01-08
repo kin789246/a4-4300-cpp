@@ -92,6 +92,8 @@ void Scene_Zelda::loadLevel(const std::string& fileName) {
                 false,
                 false
             );
+            npc->add<CHealth>(h, h);
+            npc->add<CDamage>(d);
             if (ai == "Follow") {
                 float s;
                 file >> s;
@@ -184,12 +186,12 @@ void Scene_Zelda::update() {
         sAI();
         sMovement();
         sStatus();
+        sAnimation();
         sCollision();
         sCamera();
         m_currentFrame++;
     }
     
-    sAnimation();
     sGUI();
     sRender();
 }
@@ -203,28 +205,28 @@ void Scene_Zelda::sMovement() {
             p->get<CInput>().up && !p->get<CInput>().down &&
             !p->get<CInput>().left && !p->get<CInput>().right
             ) {
-            p->get<CTransform>().velocity.y -= m_playerConfig.SPEED;
+            p->get<CTransform>().velocity.y = -m_playerConfig.SPEED;
             p->get<CTransform>().facing.y = -1;
         }
         else if (
             !p->get<CInput>().up && p->get<CInput>().down &&
             !p->get<CInput>().left && !p->get<CInput>().right
         ) {
-            p->get<CTransform>().velocity.y += m_playerConfig.SPEED;
+            p->get<CTransform>().velocity.y = m_playerConfig.SPEED;
             p->get<CTransform>().facing.y = 1;
         }
         else if (
             !p->get<CInput>().up && !p->get<CInput>().down &&
             p->get<CInput>().left && !p->get<CInput>().right
         ) {
-            p->get<CTransform>().velocity.x -= m_playerConfig.SPEED;
+            p->get<CTransform>().velocity.x = -m_playerConfig.SPEED;
             p->get<CTransform>().facing.x = -1;
         }
         else if (
             !p->get<CInput>().up && !p->get<CInput>().down &&
             !p->get<CInput>().left && p->get<CInput>().right
         ) {
-            p->get<CTransform>().velocity.x += m_playerConfig.SPEED;
+            p->get<CTransform>().velocity.x = m_playerConfig.SPEED;
             p->get<CTransform>().facing.x = 1;
         }
         if (p->get<CInput>().attack) {
@@ -266,7 +268,7 @@ void Scene_Zelda::sGUI() {
                 if (name.find("Tile") != std::string::npos) {
                     if (i++ % 5 != 0) ImGui::SameLine();
                     if (ImGui::ImageButton(anim.getSprite())) {
-                        auto tile = m_entityManager.addEntity("Tile");
+                        auto tile = m_entityManager.addEntity("tile");
                         tile->add<CAnimation>(
                             m_game->assets().getAnimation(name), true
                         );
@@ -470,6 +472,50 @@ void Scene_Zelda::sCollision() {
     // sword - NPC collisions
     // entity - heart collisions and life gain logic
     // black tile collisions / 'teleporting'
+    auto p = player();
+    if (p) {
+        // player and tiles
+        for (auto t : m_entityManager.getEntities("tile")) {
+            RectOverlap ro = m_physics.AisNearB(p, t, m_gridSize);
+            switch (ro.direction) {
+                case ODirection::UP:
+                    // std::cout << "block player move down\n";
+                    if (t->get<CBoundingBox>().blockMove) {
+                        p->get<CTransform>().pos.y -= ro.overlap.y;
+                        p->get<CBoundingBox>().center.y -= ro.overlap.y;
+                    }
+                    break;
+                case ODirection::Down:
+                    // std::cout << "block player move up\n";
+                    if (t->get<CBoundingBox>().blockMove) {
+                        p->get<CTransform>().pos.y += ro.overlap.y;
+                        p->get<CBoundingBox>().center.y += ro.overlap.y;
+                    }
+                    break;
+                case ODirection::LEFT:
+                    // std::cout << "block player move right\n";
+                    if (t->get<CBoundingBox>().blockMove) {
+                        p->get<CTransform>().pos.x -= ro.overlap.x;
+                        p->get<CBoundingBox>().center.x -= ro.overlap.x;
+                    }
+                    break;
+                case ODirection::RIGHT:
+                    // std::cout << "block player move left\n";
+                    if (t->get<CBoundingBox>().blockMove) {
+                        p->get<CTransform>().pos.x += ro.overlap.x;
+                        p->get<CBoundingBox>().center.x += ro.overlap.x;
+                    }
+                    break;
+                case ODirection::NONE:
+                    break;
+            }
+        }
+
+        // player and NPCs
+        for (auto npc : m_entityManager.getEntities("npc")) {
+            
+        }
+    }
 }
 
 void Scene_Zelda::sAnimation() {
@@ -594,14 +640,10 @@ void Scene_Zelda::sCamera() {
     }
     else {
         // room-based camera
-        auto winSize = m_game->window().getSize();
-        int roomX = pPos.x / winSize.x; 
-        int roomY = pPos.y / winSize.y;
-        if (pPos.x < 0) roomX--;
-        if (pPos.y < 0) roomY--;
+        Vec2 r = getRoomXY(pPos);
         view.setCenter(
-            roomX * (float)width() + width() / 2.0, 
-            roomY * (float)height() + height() / 2.0
+            r.x * (float)width() + width() / 2.0, 
+            r.y * (float)height() + height() / 2.0
         );
     }
 
@@ -724,6 +766,21 @@ void Scene_Zelda::sRender() {
                     }
                 }
             }
+
+            // draw patrol points
+            if (e->has<CFollowPlayer>()) {
+                auto& h = e->get<CFollowPlayer>().home;
+                dot.setPosition(h.x, h.y);
+                m_game->window().draw(dot);
+            }
+            if (e->has<CPatrol>()) {
+                for (auto p : e->get<CPatrol>().positions) {
+                    Vec2 r = getRoomXY(e->get<CTransform>().pos);
+                    Vec2 pos = getPosition(r.x, r.y, p.x, p.y);
+                    dot.setPosition(pos.x, pos.y);
+                    m_game->window().draw(dot);
+                }
+            }
         }
     }
 
@@ -739,12 +796,10 @@ void Scene_Zelda::sRender() {
         // draw room coordinate
         auto p = player();
         if (p) {
-            int rx = p->get<CTransform>().pos.x / (int)width();
-            int ry = p->get<CTransform>().pos.y / (int)height();
-            if (p->get<CTransform>().pos.x < 0) rx--;
-            if (p->get<CTransform>().pos.y < 0) ry--;
+            Vec2 r = getRoomXY(p->get<CTransform>().pos);
             m_gridText.setString(
-                "room \n" + std::to_string(rx) + " " + std::to_string(ry)
+                "room \n" + std::to_string((int)r.x) + " " +
+                std::to_string((int)r.y)
             );
             m_gridText.setPosition(
                 leftX + m_gridSize.x + 3,
@@ -776,7 +831,6 @@ void Scene_Zelda::sRender() {
         }
     }
 }
-
 
 std::shared_ptr<Entity> Scene_Zelda::player() {
     for (auto e : m_entityManager.getEntities("player")) {
@@ -870,7 +924,17 @@ void Scene_Zelda::sDrag() {
             if (e->get<CDraggable>().dragging) {
                 Vec2 wPos = posWinToWorld(m_mousePos);
                 e->get<CTransform>().pos = wPos;
+                e->get<CBoundingBox>().center = wPos;
             }
         }
     }
+}
+
+Vec2 Scene_Zelda::getRoomXY(const Vec2& pos) {
+    auto winSize = m_game->window().getSize();
+    int roomX = pos.x / winSize.x; 
+    int roomY = pos.y / winSize.y;
+    if (pos.x < 0) roomX--;
+    if (pos.y < 0) roomY--;
+    return { (float)roomX, (float)roomY };
 }

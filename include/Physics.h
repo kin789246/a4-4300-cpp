@@ -12,12 +12,10 @@ class Physics
             std::shared_ptr<Entity> a,
             std::shared_ptr<Entity> b
         );
-
         Vec2 GetPreviousOverlap(
             std::shared_ptr<Entity> a,
             std::shared_ptr<Entity> b
         );
-
         bool IsInside(const Vec2& pos, std::shared_ptr<Entity> e);
         Intersect LineInIntersect(
             const Vec2& a, 
@@ -29,5 +27,10 @@ class Physics
             const Vec2& a, 
             const Vec2& b, 
             std::shared_ptr<Entity> e
+        );
+        RectOverlap AisNearB(
+            std::shared_ptr<Entity> a,
+            std::shared_ptr<Entity> b,
+            const Vec2& maxDist
         );
 };
