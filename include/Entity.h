@@ -18,7 +18,8 @@ typedef std::tuple<
     CGravity,
     CState,
     CFollowPlayer,
-    CPatrol
+    CPatrol,
+    CDraggable
 > ComponentTuple;
 
 class Entity

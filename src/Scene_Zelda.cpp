@@ -68,6 +68,10 @@ void Scene_Zelda::loadLevel(const std::string& fileName) {
             int rx, ry, tx, ty, bm, bv;
             file >> name >> rx >> ry >> tx >> ty >> bm >> bv;
             auto tile = m_entityManager.addEntity("tile");
+            tile->add<CAnimation>(m_game->assets().getAnimation(name), true);
+            tile->add<CTransform>(getPosition(rx, ry, tx, ty));
+            tile->add<CBoundingBox>(Vec2(64, 64), bm, bv);
+            tile->add<CDraggable>();
             std::cout << "Loaded Tile " << name << std::endl;
         }
         else if (head == "NPC") {
@@ -81,15 +85,19 @@ void Scene_Zelda::loadLevel(const std::string& fileName) {
             if (ai == "Follow") {
                 float s;
                 file >> s;
+                npc->add<CFollowPlayer>(getPosition(rx, ry, tx, ty), s);
             }
             else if (ai == "Patrol") {
                 float s;
                 int n;
                 file >> s >> n;
+                std::vector<Vec2> positions;
                 for (int i=0; i<n; i++) {
                     int xi, yi;
                     file >> xi >> yi;
+                    positions.push_back(Vec2(xi, yi));
                 }
+                npc->add<CPatrol>(positions, s);
             }
             std::cout << "Loaded NPC " << name << " with AI " << ai << std::endl;  
         }
@@ -130,9 +138,22 @@ void Scene_Zelda::spawnPlayer() {
 
 void Scene_Zelda::spawnSword(std::shared_ptr<Entity> entity) {
     // todo: implement the spawning of the sword, which:
-    // - should be given the appropriate lifespan
     // - should spawn at the appropriate location based on player's facing direction
+    auto sword = m_entityManager.addEntity("sword");
+    Vec2 facing = entity->get<CTransform>().facing;
+    Vec2 ePos = entity->get<CTransform>().pos;
+    sword->add<CTransform>(Vec2(
+       ePos.x + facing.x * m_gridSize.x, 
+       ePos.y + facing.y * m_gridSize.y 
+    ));
+    sword->add<CBoundingBox>(m_gridSize, false, false);
+    
+    // - should be given the appropriate lifespan
+    sword->add<CLifespan>(4, m_currentFrame);
+
     // - be given a damage value of 1
+    sword->add<CDamage>(1);
+
     // - should play the slash sound
 }
 
@@ -141,6 +162,7 @@ void Scene_Zelda::update() {
 
     // todo: implement pause functionality
     if (!m_pause) {
+        sDrag();
         sAI();
         sMovement();
         sStatus();
@@ -187,6 +209,9 @@ void Scene_Zelda::sMovement() {
             p->get<CTransform>().velocity.x += m_playerConfig.SPEED;
             p->get<CTransform>().facing.x = 1;
         }
+        if (p->get<CInput>().attack) {
+            spawnSword(p);
+        }
     }
 
     for (auto e : m_entityManager.getEntities()) {
@@ -210,11 +235,29 @@ void Scene_Zelda::sGUI() {
 
         if (ImGui::BeginTabItem("Tiles")) {
             // todo:
+            ImGui::Text("Click a Tile to create on the Game, then drag to move.");
+            static bool bm = true; 
+            static bool bv = true;
+            ImGui::Checkbox("Block Movement", &bm);
+            ImGui::Checkbox("Block Vision", &bv);
             int i = 0;
             for (const auto& [name, anim] : m_game->assets().getAnimations()) {
                 if (name.find("Tile") != std::string::npos) {
-                    if ((i++)%5 != 0) ImGui::SameLine();
-                    ImGui::ImageButton(anim.getSprite());
+                    if (i++ % 5 != 0) ImGui::SameLine();
+                    if (ImGui::ImageButton(anim.getSprite())) {
+                        auto tile = m_entityManager.addEntity("Tile");
+                        tile->add<CAnimation>(
+                            m_game->assets().getAnimation(name), true
+                        );
+                        // todo: check if needs blockVision
+                        tile->add<CBoundingBox>(Vec2(64, 64), bm, bv);
+                        tile->add<CDraggable>();
+                        auto view = m_game->window().getView().getCenter();
+                        tile->add<CTransform>(Vec2(view.x, view.y));
+                        std::cout << "create " << name
+                            << " with block movement=" << bm
+                            << " and block vision=" << bv << std::endl;
+                    }
                     ImGui::SetItemTooltip("%s", name.c_str());
                 }
             }
@@ -290,6 +333,9 @@ void Scene_Zelda::sGUI() {
 
 void Scene_Zelda::sDoAction(const Action& action) {
     // todo:
+    if (action.name() == "MOUSE_MOVE") {
+        m_mousePos = action.pos();
+    }
     if (action.type() == "START") {
         if (action.name() == "TOGGLE_TEXTURE") {
             m_drawTextures = !m_drawTextures; 
@@ -329,6 +375,26 @@ void Scene_Zelda::sDoAction(const Action& action) {
         else if (action.name() == "QUIT") { 
             onEnd();
         }
+        else if (action.name() == "LEFT_CLICK") {
+            // std::cout << action.toString() << std::endl; 
+            Vec2 pos = posWinToWorld(action.pos());
+            // std::cout << "world position = " << pos.x << " " << pos.y << " \n";
+            if (m_eOnDragging) {
+                m_eOnDragging->get<CDraggable>().dragging = false;
+                m_eOnDragging = nullptr;
+                return;
+            }
+            for (auto e : m_entityManager.getEntities()) {
+                if (isInside(pos, e)) {
+                    if (e->has<CDraggable>()) {
+                        if (!m_eOnDragging) {
+                            e->get<CDraggable>().dragging = true;
+                            m_eOnDragging = e;
+                        }
+                    }
+                }
+            }
+        }
     }
     else if (action.type() == "END") {
         if (action.name() == "UP") {
@@ -362,6 +428,14 @@ void Scene_Zelda::sAI() {
 
 void Scene_Zelda::sStatus() {
     // todo: implement lifespan and invincibility frames here
+    for (auto e : m_entityManager.getEntities()) {
+        if (e->has<CLifespan>()) {
+            if (m_currentFrame - e->get<CLifespan>().frameCreated > 
+                e->get<CLifespan>().lifespan) {
+                e->destroy();
+            }
+        }
+    }
 }
 
 void Scene_Zelda::sCollision() {
@@ -726,5 +800,37 @@ void Scene_Zelda::changePlayerStateTo(
     }
     else { 
         p->get<CState>().changeAnimate = false;
+    }
+}
+
+Vec2 Scene_Zelda::posWinToWorld(const Vec2& pos) {
+    auto view = m_game->window().getView();
+    float wx = view.getCenter().x - width() / 2.0;
+    float wy = view.getCenter().y - height() / 2.0;
+    return Vec2(pos.x + wx, pos.y + wy);
+}
+
+bool Scene_Zelda::isInside(Vec2 pos, std::shared_ptr<Entity> e) {
+    Vec2 s = e->get<CAnimation>().animation.getSize();
+    Vec2 ePos = e->get<CTransform>().pos;
+    if (pos.x > ePos.x - s.x / 2 &&
+        pos.x < ePos.x + s.x / 2 &&
+        pos.y > ePos.y - s.y / 2 &&
+        pos.y < ePos.y + s.y / 2
+    ) {
+        std::cout << e->get<CAnimation>().animation.getName() << std::endl;
+        return true;
+    }
+    return false;
+}
+
+void Scene_Zelda::sDrag() {
+    for (auto e : m_entityManager.getEntities()) {
+        if (e->has<CDraggable>()) {
+            if (e->get<CDraggable>().dragging) {
+                Vec2 wPos = posWinToWorld(m_mousePos);
+                e->get<CTransform>().pos = wPos;
+            }
+        }
     }
 }

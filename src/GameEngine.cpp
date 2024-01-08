@@ -2,6 +2,7 @@
 #include "Assets.h"
 #include "Scene_Menu.h"
 #include "imgui-SFML.h"
+#include "imgui.h"
 
 #include <iostream>
 #include <string>
@@ -82,6 +83,63 @@ void GameEngine::sUserInput() {
             currentScene()->doAction(
                 Action(currentScene()->getActionMap().at(event.key.code)
                     , actionType)
+            );
+        }
+
+
+        // this line ignores mouse events if ImGui is the thing clicked
+        if (ImGui::GetIO().WantCaptureMouse) { continue; }
+
+        // mouse event below
+        auto mpos = sf::Mouse::getPosition(m_window);
+        Vec2 pos = Vec2(mpos.x, mpos.y);
+        if (event.type == sf::Event::MouseButtonPressed) {
+            switch (event.mouseButton.button) {
+                case sf::Mouse::Left:
+                    currentScene()->doAction(
+                        Action("LEFT_CLICK", "START", pos)
+                    );
+                    break;
+                case sf::Mouse::Middle:
+                    currentScene()->doAction(
+                        Action("MIDDLE_CLICK", "START", pos)
+                    );
+                    break;
+                case sf::Mouse::Right:
+                    currentScene()->doAction(
+                        Action("RIGHT_CLICK", "START", pos)
+                    );
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        if (event.type == sf::Event::MouseButtonReleased) {
+            switch (event.mouseButton.button) {
+                case sf::Mouse::Left:
+                    currentScene()->doAction(
+                        Action("LEFT_CLICK", "END", pos)
+                    );
+                    break;
+                case sf::Mouse::Middle:
+                    currentScene()->doAction(
+                        Action("MIDDLE_CLICK", "END", pos)
+                    );
+                    break;
+                case sf::Mouse::Right:
+                    currentScene()->doAction(
+                        Action("RIGHT_CLICK", "END", pos)
+                    );
+                    break;
+                default:
+                    break;
+            }
+        }
+        
+        if (event.type == sf::Event::MouseMoved) {
+            currentScene()->doAction(
+                Action("MOUSE_MOVE", Vec2(event.mouseMove.x, event.mouseMove.y))
             );
         }
     }

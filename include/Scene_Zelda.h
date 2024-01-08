@@ -20,6 +20,8 @@ class Scene_Zelda : public Scene
     bool m_follow = false;
     const Vec2 m_gridSize = { 64, 64 };
     sf::Text m_gridText;
+    Vec2 m_mousePos;
+    std::shared_ptr<Entity> m_eOnDragging;
 
     void init(const std::string& levelPath);
     void loadLevel(const std::string& levelPath);
@@ -38,9 +40,14 @@ class Scene_Zelda : public Scene
     void sCamera();
     void sGUI();
     void sRender();
+    void sDrag();
 
     void changePlayerStateTo(PlayerState s);
     void changePlayerStateTo(const std::string& state, const Vec2& facing); 
+
+    Vec2 posWinToWorld(const Vec2& pos);
+    bool isInside(Vec2 pos, std::shared_ptr<Entity> e);
+
     public:
 
     Scene_Zelda(GameEngine*, std::string& levelPath);

@@ -161,3 +161,11 @@ class CPatrol : public Component
     CPatrol() {}
     CPatrol(std::vector<Vec2>& pos, float s) : positions(pos), speed(s) {}
 };
+
+class CDraggable : public Component
+{
+    public:
+
+    bool dragging = false;
+    CDraggable() {}
+};
