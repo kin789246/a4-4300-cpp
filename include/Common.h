@@ -17,3 +17,7 @@ struct RectOverlap {
     ODirection direction;
     Vec2 overlap;
 };
+
+namespace GameMath {
+    Vec2 getSpeedAB(const Vec2& posA, const Vec2& posB, float speed); 
+}

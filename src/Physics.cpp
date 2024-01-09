@@ -78,12 +78,12 @@ bool Physics::EntityIntersect(
     auto box = e->get<CBoundingBox>().halfSize;
     Vec2 e1{ boxC.x - box.x, boxC.y - box.y };
     Vec2 e2{ boxC.x + box.x, boxC.y - box.y };
-    Vec2 e3{ boxC.x - box.x, boxC.y + box.y };
-    Vec2 e4{ boxC.x + box.x, boxC.y + box.y };
+    Vec2 e3{ boxC.x + box.x, boxC.y + box.y };
+    Vec2 e4{ boxC.x - box.x, boxC.y + box.y };
 
-    if (LineInIntersect(a, b, e1, e2).result &&
-        LineInIntersect(a, b, e2, e3).result &&
-        LineInIntersect(a, b, e3, e4).result &&
+    if (LineInIntersect(a, b, e1, e2).result ||
+        LineInIntersect(a, b, e2, e3).result ||
+        LineInIntersect(a, b, e3, e4).result ||
         LineInIntersect(a, b, e4, e1).result 
     ) {
         return true;
@@ -102,7 +102,7 @@ RectOverlap Physics::AisNearB(
     float dy = b->get<CTransform>().pos.y - a->get<CTransform>().pos.y;
     if (0 < overlap.x && 
         -maxDist.y < overlap.y &&
-        0 <= overlap.y &&
+        0 < overlap.y &&
         pOverlap.y <= 0
     ) {
         if (dy > 0) {
@@ -116,7 +116,7 @@ RectOverlap Physics::AisNearB(
     float dx = b->get<CTransform>().pos.x - a->get<CTransform>().pos.x;
     if (0 < overlap.y &&
             -maxDist.x < overlap.x &&
-            0 <= overlap.x &&
+            0 < overlap.x &&
             pOverlap.x <= 0
        ) {
         if (dx > 0) {

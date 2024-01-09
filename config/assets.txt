@@ -34,6 +34,7 @@ Texture TexTreeMonster3 assets/images/zelda_treemonster3.png
 Texture TexTreeMonster4 assets/images/zelda_treemonster4.png
 Texture TexTreeMonster5 assets/images/zelda_treemonster5.png
 Texture TexTreeMonster6 assets/images/zelda_treemonster6.png
+Texture TexHeart assets/images/zelda_heart.png
 Animation ArmosStandBack TexArmosStandBack 2 12
 Animation ArmosStandFront TexArmosStandFront 2 12
 Animation TileBlack TexBlack 1 0
@@ -70,6 +71,7 @@ Animation TileTreeMonster3 TexTreeMonster3 1 0
 Animation TileTreeMonster4 TexTreeMonster4 1 0
 Animation TileTreeMonster5 TexTreeMonster5 1 0
 Animation TileTreeMonster6 TexTreeMonster6 1 0
+Animation TileHeart TexHeart 1 0
 Sound SEnemyDamaged assets/sounds/zelda_EnemyDamaged.wav
 Sound SEnemyDied assets/sounds/zelda_EnemyDied.wav
 Sound SLinkDamaged assets/sounds/zelda_LinkDamaged.wav
@@ -77,5 +79,6 @@ Sound SLinkDied assets/sounds/zelda_LinkDied.wav
 Sound SLinkLowHP assets/sounds/zelda_LinkLowHealth.wav
 Sound SLinkPickupHeart assets/sounds/zelda_PickupHeart.wav
 Sound SSwordSlash assets/sounds/zelda_SwordSlash.wav
+Sound SWalkingOnStairs assets/sounds/zelda_WalkingOnStairs.wav
 Sound STitleTheme assets/sounds/zelda_TitleTheme.ogg
 Font Mario assets/fonts/mario.ttf

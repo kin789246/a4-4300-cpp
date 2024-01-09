@@ -72,7 +72,7 @@ void Scene_Zelda::loadLevel(const std::string& fileName) {
             tile->add<CTransform>(getPosition(rx, ry, tx, ty));
             tile->add<CBoundingBox>(
                 tile->get<CTransform>().pos,
-                Vec2(64, 64),
+                Vec2(62, 62),
                 bm,
                 bv
             );
@@ -88,7 +88,7 @@ void Scene_Zelda::loadLevel(const std::string& fileName) {
             npc->add<CTransform>(getPosition(rx, ry, tx, ty));
             npc->add<CBoundingBox>(
                 npc->get<CTransform>().pos,
-                Vec2(64, 64),
+                Vec2(63, 63),
                 false,
                 false
             );
@@ -175,6 +175,7 @@ void Scene_Zelda::spawnSword(std::shared_ptr<Entity> entity) {
     sword->add<CDamage>(1);
 
     // - should play the slash sound
+    m_game->assets().getSound("SSwordSlash").play();
 }
 
 void Scene_Zelda::update() {
@@ -230,12 +231,34 @@ void Scene_Zelda::sMovement() {
             p->get<CTransform>().facing.x = 1;
         }
         if (p->get<CInput>().attack) {
-            spawnSword(p);
+            if (m_entityManager.getEntities("sword").size() == 0) {
+                spawnSword(p);
+            }
         }
     }
 
     for (auto e : m_entityManager.getEntities()) {
         if (e->has<CTransform>()) {
+            // check if npc returns to home with follow AI
+            // if (e->has<CFollowPlayer>()) {
+            //     auto& npcTrans = e->get<CTransform>();
+            //     Vec2& npcHome = e->get<CFollowPlayer>().home;
+            //     if (npcTrans.velocity.x != 0 || npcTrans.velocity.y != 0) {
+            //         float dx = npcHome.x - npcTrans.pos.x;
+            //         float dy = npcHome.y - npcTrans.pos.y;
+            //         // if npc is closing home point set to home point
+            //         if (dx < 1 && dy < 1 && dx > -1 && dy > -1) {
+            //             npcTrans.prevPos = npcTrans.pos;
+            //             e->get<CBoundingBox>().prevCenter = 
+            //                 e->get<CBoundingBox>().center;
+            //             
+            //             npcTrans.pos = npcHome;
+            //             e->get<CBoundingBox>().center = npcHome;
+            //         }
+            //     }
+            // }
+
+            // move entities
             e->get<CTransform>().prevPos = e->get<CTransform>().pos;
             e->get<CBoundingBox>().prevCenter = e->get<CBoundingBox>().center;
             e->get<CBoundingBox>().center += e->get<CTransform>().velocity;
@@ -276,7 +299,7 @@ void Scene_Zelda::sGUI() {
                         tile->add<CTransform>(Vec2(view.x, view.y));
                         tile->add<CBoundingBox>(
                             Vec2(view.x, view.y),
-                            Vec2(64, 64), 
+                            Vec2(62, 62), 
                             bm, 
                             bv
                         );
@@ -449,8 +472,63 @@ void Scene_Zelda::sDoAction(const Action& action) {
 
 void Scene_Zelda::sAI() {
     // todo: implement enemy AI
-    // Follow AI
-    // Patrol AI
+    for (auto npc : m_entityManager.getEntities("npc")) {
+        auto p = player();
+        if (!p) break;
+        Vec2& pPos = p->get<CTransform>().pos;
+        Vec2& npcPos = npc->get<CTransform>().pos;
+        if (getRoomXY(pPos) == getRoomXY(npcPos) && npc->has<CFollowPlayer>()) {
+            // Follow AI
+            bool blockVision = false;
+            // check if any tile is blockvision between npc and player
+            for (auto e : m_entityManager.getEntities()) {
+                if (e->has<CBoundingBox>() && e != p) {
+                    if (e->get<CBoundingBox>().blockVision &&
+                            m_physics.EntityIntersect(pPos, npcPos, e)
+                       ) {
+                        blockVision = true;
+                        break;
+                    }
+                }
+            }
+            // npc will follow player
+            if (!blockVision) {
+                npc->get<CTransform>().velocity = GameMath::getSpeedAB(
+                        npcPos, 
+                        pPos, 
+                        npc->get<CFollowPlayer>().speed
+                        );
+            }
+            // npc will go back to home
+            else {
+                npc->get<CTransform>().velocity = GameMath::getSpeedAB(
+                        npcPos, 
+                        npc->get<CFollowPlayer>().home, 
+                        npc->get<CFollowPlayer>().speed
+                        );
+            }
+        }
+        // Patrol AI
+        if (npc->has<CPatrol>()) {
+            auto& npcTrans = npc->get<CTransform>();
+            size_t& currIdx = npc->get<CPatrol>().currentPosition;
+            auto& positions = npc->get<CPatrol>().positions;
+            size_t nextIdx = (currIdx + 1) % positions.size();
+            Vec2 room = getRoomXY(npcTrans.pos);
+            Vec2 toCoord = getPosition(
+                    room.x, room.y, 
+                    positions[nextIdx].x, positions[nextIdx].y
+            );
+            npcTrans.velocity = GameMath::getSpeedAB(
+                npcPos, toCoord, npc->get<CPatrol>().speed
+            );
+            // if npc is closing to the next point 
+            // change speed to the next point
+            if (npcPos.dist(toCoord) < 2) {
+                currIdx = (currIdx + 1) % positions.size();
+            }
+        }
+    }
 }
 
 void Scene_Zelda::sStatus() {
@@ -460,6 +538,12 @@ void Scene_Zelda::sStatus() {
             if (m_currentFrame - e->get<CLifespan>().frameCreated > 
                 e->get<CLifespan>().lifespan) {
                 e->destroy();
+            }
+        }
+        if (e->has<CInvicibility>()) {
+            // add invicibility about 30 frames (0.5 sec)
+            if (m_currentFrame - e->get<CInvicibility>().iframes > 30) {
+                e->remove<CInvicibility>();
             }
         }
     }
@@ -513,7 +597,121 @@ void Scene_Zelda::sCollision() {
 
         // player and NPCs
         for (auto npc : m_entityManager.getEntities("npc")) {
-            
+            RectOverlap ro = m_physics.AisNearB(npc, p, m_gridSize);
+            switch (ro.direction) {
+                case ODirection::UP:
+                    if (npc->get<CTransform>().velocity != Vec2(0, 0)) {
+                        // std::cout << "enemy backs to up\n";
+                        npc->get<CTransform>().pos.y -= ro.overlap.y;
+                        npc->get<CBoundingBox>().center.y -= ro.overlap.y;
+                    }
+                    break;
+                case ODirection::Down:
+                    if (npc->get<CTransform>().velocity != Vec2(0, 0)) {
+                        // std::cout << "enemy backs to down\n";
+                        npc->get<CTransform>().pos.y += ro.overlap.y;
+                        npc->get<CBoundingBox>().center.y += ro.overlap.y;
+                    }
+                    break;
+                case ODirection::LEFT:
+                    if (npc->get<CTransform>().velocity != Vec2(0, 0)) {
+                        // std::cout << "enemy backs to left\n";
+                        npc->get<CTransform>().pos.x -= ro.overlap.x;
+                        npc->get<CBoundingBox>().center.x -= ro.overlap.x;
+                    }
+                    break;
+                case ODirection::RIGHT:
+                    if (npc->get<CTransform>().velocity != Vec2(0, 0)) {
+                        // std::cout << "enemy backs to right\n";
+                        npc->get<CTransform>().pos.x += ro.overlap.x;
+                        npc->get<CBoundingBox>().center.x += ro.overlap.x;
+                    }
+                    break;
+                case ODirection::NONE:
+                    break;
+            }
+
+            // damage
+            if (ro.direction != ODirection::NONE) {
+                if (npc->has<CDamage>() && !p->has<CInvicibility>()) {
+                    p->get<CHealth>().current -= npc->get<CDamage>().damage;
+                    p->add<CInvicibility>(m_currentFrame);
+                    // std::cout << npc->get<CDamage>().damage << "\n";
+                    // play link damaged sound
+                    m_game->assets().getSound("SLinkDamaged").play();
+                    if (p->get<CHealth>().current == 0) {
+                        // todo: game over
+                        p->destroy();
+                        spawnPlayer();
+                        // respawn player or something
+                        m_game->assets().getSound("SLinkDied").play();
+                    }
+                }
+            }
+
+            // npc and sword
+            for (auto sword : m_entityManager.getEntities("sword")) {
+                Vec2 overlap = m_physics.GetOverlap(sword, npc);
+                if (overlap.x >= 0 && overlap.y >= 0) {
+                    npc->get<CHealth>().current -= sword->get<CDamage>().damage;
+                    m_game->assets().getSound("SEnemyDamaged").play();
+                    sword->destroy();
+                    if (npc->get<CHealth>().current == 0) {
+                        npc->destroy();
+                        m_game->assets().getSound("SEnemyDied").play();
+                        break;
+                    }
+                }
+            }
+
+            // npc and tiles
+            for (auto tile : m_entityManager.getEntities("tile")) {
+                ro = m_physics.AisNearB(npc, tile, m_gridSize);
+                switch (ro.direction) {
+                    case ODirection::UP:
+                        if (npc->get<CTransform>().velocity != Vec2(0, 0)) {
+                            if (tile->get<CBoundingBox>().blockMove) {
+                                // std::cout << "enemy backs to up\n";
+                                npc->get<CTransform>().pos.y -= ro.overlap.y;
+                                npc->get<CBoundingBox>().center.y -=
+                                    ro.overlap.y;
+                            }
+                        }
+                        break;
+                    case ODirection::Down:
+                        if (npc->get<CTransform>().velocity != Vec2(0, 0)) {
+                            if (tile->get<CBoundingBox>().blockMove) {
+                                // std::cout << "enemy backs to down\n";
+                                npc->get<CTransform>().pos.y += ro.overlap.y;
+                                npc->get<CBoundingBox>().center.y += 
+                                    ro.overlap.y;
+                            }
+                        }
+                        break;
+                    case ODirection::LEFT:
+                        if (npc->get<CTransform>().velocity != Vec2(0, 0)) {
+                            if (tile->get<CBoundingBox>().blockMove) {
+                                // std::cout << "enemy backs to left\n";
+                                npc->get<CTransform>().pos.x -= ro.overlap.x;
+                                npc->get<CBoundingBox>().center.x -= 
+                                    ro.overlap.x;
+                            }
+                        }
+                        break;
+                    case ODirection::RIGHT:
+                        if (npc->get<CTransform>().velocity != Vec2(0, 0)) {
+                            if (tile->get<CBoundingBox>().blockMove) {
+                                // std::cout << "enemy backs to right\n";
+                                npc->get<CTransform>().pos.x += ro.overlap.x;
+                                npc->get<CBoundingBox>().center.x += 
+                                    ro.overlap.x;
+                            }
+                        }
+                        break;
+                    case ODirection::NONE:
+                        break;
+                }
+            }
         }
     }
 }

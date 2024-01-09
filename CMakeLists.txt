@@ -33,6 +33,7 @@ set(SRC_FILES
     src/GameEngine.cpp
     src/Entity.cpp
     src/EntityManager.cpp
+    src/Common.cpp
 )
 set(exec_name a4)
 add_executable(${exec_name} ${SRC_FILES})
