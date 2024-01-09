@@ -70,9 +70,11 @@ void Scene_Zelda::loadLevel(const std::string& fileName) {
             auto tile = m_entityManager.addEntity("tile");
             tile->add<CAnimation>(m_game->assets().getAnimation(name), true);
             tile->add<CTransform>(getPosition(rx, ry, tx, ty));
+            Vec2 boxSize = tile->get<CAnimation>().animation.getSize();
+            boxSize -= Vec2(2, 2);
             tile->add<CBoundingBox>(
                 tile->get<CTransform>().pos,
-                Vec2(62, 62),
+                Vec2(boxSize.x, boxSize.y),
                 bm,
                 bv
             );
@@ -169,7 +171,7 @@ void Scene_Zelda::spawnSword(std::shared_ptr<Entity> entity) {
     }
     
     // - should be given the appropriate lifespan
-    sword->add<CLifespan>(4, m_currentFrame);
+    sword->add<CLifespan>(8, m_currentFrame);
 
     // - be given a damage value of 1
     sword->add<CDamage>(1);
@@ -299,7 +301,8 @@ void Scene_Zelda::sGUI() {
                         tile->add<CTransform>(Vec2(view.x, view.y));
                         tile->add<CBoundingBox>(
                             Vec2(view.x, view.y),
-                            Vec2(62, 62), 
+                            tile->get<CAnimation>()
+                                .animation.getSize()-Vec2(2, 2), 
                             bm, 
                             bv
                         );
@@ -542,7 +545,7 @@ void Scene_Zelda::sStatus() {
         }
         if (e->has<CInvicibility>()) {
             // add invicibility about 30 frames (0.5 sec)
-            if (m_currentFrame - e->get<CInvicibility>().iframes > 30) {
+            if (m_currentFrame - e->get<CInvicibility>().iframes > 60) {
                 e->remove<CInvicibility>();
             }
         }
@@ -593,6 +596,19 @@ void Scene_Zelda::sCollision() {
                 case ODirection::NONE:
                     break;
             }
+
+            // heart collides npc or player
+            if (t->get<CAnimation>().animation.getName() == "TileHeart") {
+                for (auto e : m_entityManager.getEntities()) {
+                    Vec2 overlap = m_physics.GetOverlap(t, e);
+                    if ((overlap.x > 0 && overlap.y > 0) && e->has<CHealth>()
+                    ) {
+                        e->get<CHealth>().current = e->get<CHealth>().max;
+                        m_game->assets().getSound("SLinkPickupHeart").play();
+                        t->destroy();
+                    }
+                }
+            }
         }
 
         // player and NPCs
@@ -636,14 +652,13 @@ void Scene_Zelda::sCollision() {
                 if (npc->has<CDamage>() && !p->has<CInvicibility>()) {
                     p->get<CHealth>().current -= npc->get<CDamage>().damage;
                     p->add<CInvicibility>(m_currentFrame);
-                    // std::cout << npc->get<CDamage>().damage << "\n";
                     // play link damaged sound
                     m_game->assets().getSound("SLinkDamaged").play();
                     if (p->get<CHealth>().current == 0) {
                         // todo: game over
+                        // respawn player or something
                         p->destroy();
                         spawnPlayer();
-                        // respawn player or something
                         m_game->assets().getSound("SLinkDied").play();
                     }
                 }
@@ -652,10 +667,11 @@ void Scene_Zelda::sCollision() {
             // npc and sword
             for (auto sword : m_entityManager.getEntities("sword")) {
                 Vec2 overlap = m_physics.GetOverlap(sword, npc);
-                if (overlap.x >= 0 && overlap.y >= 0) {
+                if (overlap.x >= 0 && overlap.y >= 0 && sword->has<CDamage>()) {
                     npc->get<CHealth>().current -= sword->get<CDamage>().damage;
                     m_game->assets().getSound("SEnemyDamaged").play();
-                    sword->destroy();
+                    // sword->destroy();
+                    sword->remove<CDamage>();
                     if (npc->get<CHealth>().current == 0) {
                         npc->destroy();
                         m_game->assets().getSound("SEnemyDied").play();

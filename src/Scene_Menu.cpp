@@ -17,7 +17,7 @@ void Scene_Menu::init() {
     registerAction(sf::Keyboard::Escape, "QUIT");
 
     m_titleMusic = m_game->assets().getSound("STitleTheme");
-    // m_titleMusic.play();
+    m_titleMusic.play();
 
     m_title = "Not Link";
     int titleSize = 30;
