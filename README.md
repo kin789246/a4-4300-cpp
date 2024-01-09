@@ -8,6 +8,9 @@ try to clone the assignment 4 game of COMP4300 on Youtube teached by Dave Church
 
 DEMO
 
+https://github.com/kin789246/a4-4300-cpp/assets/30062348/3a3430fd-caaf-4183-a341-86667ec91399
+
+
 **to-do**
 
 ------------------------------------------------------------------------------ 
